@@ -311,10 +311,11 @@ To query the properties of multiple tracks, see [Song: Properties of cue points,
 ### Track: Properties of devices
 | Address                            | Query params | Response params        | Description                              |
 |:-----------------------------------|:-------------|:-----------------------|:-----------------------------------------|
-| /live/track/get/num_devices        | track_id     | track_id, num_devices  | Query the number of devices on the track |
-| /live/track/get/devices/name       | track_id     | track_id, [name, ...]  | Query all device names on track          |
-| /live/track/get/devices/type       | track_id     | track_id, [type, ...]  | Query all devices types on track         |
-| /live/track/get/devices/class_name | track_id     | track_id, [class, ...] | Query all device class names on track    |
+| /live/track/get/num_devices        | track_id              | track_id, num_devices  | Query the number of devices on the track                                  |
+| /live/track/get/devices/name       | track_id              | track_id, [name, ...]  | Query all device names on track                                           |
+| /live/track/get/devices/type       | track_id              | track_id, [type, ...]  | Query all devices types on track                                          |
+| /live/track/get/devices/class_name | track_id              | track_id, [class, ...] | Query all device class names on track                                     |
+| /live/track/load_instrument        | track_id, name        |                        | Load a built-in instrument by name (e.g. "Wavetable", "Operator") onto this track. Looks up the item in `app.browser.instruments` by exact name and loads it via `app.browser.load_item`. No reply; poll `num_devices` to confirm. |
 
 See [Device API](#device-api) for details on Device type/class_names.
  
