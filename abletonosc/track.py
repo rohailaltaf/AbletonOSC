@@ -1,4 +1,7 @@
 from typing import Tuple, Any, Callable, Optional
+
+import Live
+
 from .handler import AbletonOSCHandler
 
 
@@ -161,6 +164,41 @@ class TrackHandler(AbletonOSCHandler):
         self.osc_server.add_handler("/live/track/get/devices/type", create_track_callback(track_get_device_types))
         self.osc_server.add_handler("/live/track/get/devices/class_name", create_track_callback(track_get_device_class_names))
         self.osc_server.add_handler("/live/track/get/devices/can_have_chains", create_track_callback(track_get_device_can_have_chains))
+
+        #--------------------------------------------------------------------------------
+        # Track: Load a built-in instrument onto this track by name.
+        # Looks up a top-level item under `app.browser.instruments` whose `name`
+        # equals the requested name (e.g. "Wavetable", "Operator"), selects the
+        # target track, and calls `app.browser.load_item` to load it.
+        # `load_item` requires a selected track, so we set it explicitly to avoid
+        # depending on the user's current selection.
+        # No reply is sent; loading is asynchronous on Live's side. Callers can
+        # poll `/live/track/get/num_devices` to confirm.
+        #--------------------------------------------------------------------------------
+        def track_load_instrument(track, params: Tuple[Any]):
+            instrument_name = str(params[0])
+            app = Live.Application.get_application()
+
+            matching = [
+                item for item in app.browser.instruments.children
+                if item.name == instrument_name
+            ]
+            if not matching:
+                self.logger.warning(
+                    "load_instrument: no top-level browser instrument named %r" % instrument_name
+                )
+                return
+            if len(matching) > 1:
+                self.logger.warning(
+                    "load_instrument: %d items named %r found; loading the first"
+                    % (len(matching), instrument_name)
+                )
+
+            self.song.view.selected_track = track
+            app.browser.load_item(matching[0])
+
+        self.osc_server.add_handler("/live/track/load_instrument",
+                                    create_track_callback(track_load_instrument))
 
         #--------------------------------------------------------------------------------
         # Track: Output routing.
