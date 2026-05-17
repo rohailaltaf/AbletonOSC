@@ -8,9 +8,9 @@ from .handler import AbletonOSCHandler
 class BrowserHandler(AbletonOSCHandler):
     """OSC handlers for walking and loading from Live's browser.
 
-    Exposes the instrument-side (`app.browser.instruments`) for "I want a synth"
-    workflows and the drum-side (`app.browser.drums`) for "I want a drum kit"
-    workflows. Audio effects, MIDI effects, etc. could follow the same pattern.
+    Exposes instruments (`app.browser.instruments`), drums
+    (`app.browser.drums`), and audio effects (`app.browser.audio_effects`).
+    MIDI effects and other sections could follow the same pattern.
     """
 
     def __init__(self, manager):
@@ -123,6 +123,48 @@ class BrowserHandler(AbletonOSCHandler):
             self.song.view.selected_track = track
             app.browser.load_item(node)
 
+        def list_audio_effects(params: Tuple[Any]):
+            path = str(params[0]) if params else ""
+            app = Live.Application.get_application()
+            node = _walk(app.browser.audio_effects, path) if path else app.browser.audio_effects
+            if node is None:
+                self.osc_server.send(
+                    "/live/browser/list_audio_effects", (path,)
+                )
+                return
+            names = tuple(child.name for child in node.children)
+            self.osc_server.send(
+                "/live/browser/list_audio_effects", (path,) + names
+            )
+
+        def load_audio_effect(params: Tuple[Any]):
+            track_id = int(params[0])
+            path = str(params[1])
+            if not path:
+                self.logger.warning("load_audio_effect: empty path")
+                return
+
+            app = Live.Application.get_application()
+            node = _walk(app.browser.audio_effects, path)
+            if node is None:
+                return
+            if not node.is_loadable:
+                self.logger.warning(
+                    "load_audio_effect: path %r is not loadable" % path
+                )
+                return
+
+            try:
+                track = self.song.tracks[track_id]
+            except IndexError:
+                self.logger.warning(
+                    "load_audio_effect: track %d does not exist" % track_id
+                )
+                return
+
+            self.song.view.selected_track = track
+            app.browser.load_item(node)
+
         self.osc_server.add_handler(
             "/live/browser/list_instrument_presets", list_instrument_presets
         )
@@ -134,4 +176,10 @@ class BrowserHandler(AbletonOSCHandler):
         )
         self.osc_server.add_handler(
             "/live/track/load_drum_kit", load_drum_kit
+        )
+        self.osc_server.add_handler(
+            "/live/browser/list_audio_effects", list_audio_effects
+        )
+        self.osc_server.add_handler(
+            "/live/track/load_audio_effect", load_audio_effect
         )
