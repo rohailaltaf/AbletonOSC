@@ -108,6 +108,23 @@ class SongHandler(AbletonOSCHandler):
             return tuple(self.song.tracks[index].name for index in range(track_index_min, track_index_max))
         self.osc_server.add_handler("/live/song/get/track_names", song_get_track_names)
 
+        #--------------------------------------------------------------------------------
+        # Callbacks for Song: Return-track properties
+        # Return tracks live in song.return_tracks, separately from song.tracks.
+        # AbletonOSC already exposed create_return_track / delete_return_track methods
+        # but had no way to discover what return tracks exist.
+        #--------------------------------------------------------------------------------
+        self.osc_server.add_handler(
+            "/live/song/get/num_return_tracks",
+            lambda _: (len(self.song.return_tracks),),
+        )
+
+        def song_get_return_track_names(params):
+            return tuple(rt.name for rt in self.song.return_tracks)
+        self.osc_server.add_handler(
+            "/live/song/get/return_tracks/name", song_get_return_track_names
+        )
+
         def song_get_track_data(params):
             """
             Retrieve one more properties of a block of tracks and their clips.

@@ -162,10 +162,12 @@ for [Live Object Model - Song](https://docs.cycling74.com/max8/vignettes/live_ob
 | Address                    | Query params | Response params        | Description                                                                 |
 |:---------------------------|:-------------|:-----------------------|:----------------------------------------------------------------------------|
 | /live/song/get/cue_points  |              | name, time, ...        | Query a list of the song's cue points                                       |
-| /live/song/get/num_scenes  |              | num_scenes             | Query the number of scenes                                                  |
-| /live/song/get/num_tracks  |              | num_tracks             | Query the number of tracks                                                  |
-| /live/song/get/track_names |              | [index_min, index_max] | Query track names (optionally, over a given range)                          |
-| /live/song/get/track_data  |              | [various]              | Query bulk properties of multiple tracks/clips. See below for further info. |
+| /live/song/get/num_scenes         |              | num_scenes             | Query the number of scenes                                                  |
+| /live/song/get/num_tracks         |              | num_tracks             | Query the number of (regular) tracks                                        |
+| /live/song/get/track_names        |              | [index_min, index_max] | Query track names (optionally, over a given range)                          |
+| /live/song/get/track_data         |              | [various]              | Query bulk properties of multiple tracks/clips. See below for further info. |
+| /live/song/get/num_return_tracks  |              | num_return_tracks      | Query the number of return tracks                                           |
+| /live/song/get/return_tracks/name |              | [name, ...]            | Query all return-track names in order                                       |
 
 
 #### Querying track/clip data in bulk with /live/song/get/track_data
@@ -333,6 +335,7 @@ Walk and load items from Live's instrument browser. Useful for selecting specifi
 |:-----------------------------------------|:-------------------|:-----------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | /live/browser/list_instrument_presets    | path (optional)    | path, [child_name, ...]      | List child names under `app.browser.instruments` at the given slash-separated path. Empty path returns top-level instruments. Empty reply (just `path`) means the path doesn't exist.       |
 | /live/track/load_instrument_preset       | track_id, path     |                              | Load an item from the instrument browser onto the specified track. `path` is slash-separated from `app.browser.instruments` (e.g. `Wavetable/Synth Lead/Big Pluck`). No reply.              |
+| /live/return_track/load_audio_effect     | return_id, path    |                              | Load an item from `app.browser.audio_effects` onto a return track by index. Mirrors `/live/track/load_audio_effect` but targets `song.return_tracks`. No reply.                              |
 
 </details>
 
