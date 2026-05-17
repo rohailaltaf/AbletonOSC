@@ -8,9 +8,9 @@ from .handler import AbletonOSCHandler
 class BrowserHandler(AbletonOSCHandler):
     """OSC handlers for walking and loading from Live's browser.
 
-    The instrument-side of the browser is exposed for now (`app.browser.instruments`),
-    which covers the bulk of "I want a synth" workflows. Audio effects, MIDI effects,
-    drums, etc. could follow the same pattern.
+    Exposes the instrument-side (`app.browser.instruments`) for "I want a synth"
+    workflows and the drum-side (`app.browser.drums`) for "I want a drum kit"
+    workflows. Audio effects, MIDI effects, etc. could follow the same pattern.
     """
 
     def __init__(self, manager):
@@ -83,9 +83,55 @@ class BrowserHandler(AbletonOSCHandler):
             self.song.view.selected_track = track
             app.browser.load_item(node)
 
+        def list_drum_kits(params: Tuple[Any]):
+            path = str(params[0]) if params else ""
+            app = Live.Application.get_application()
+            node = _walk(app.browser.drums, path) if path else app.browser.drums
+            if node is None:
+                self.osc_server.send("/live/browser/list_drum_kits", (path,))
+                return
+            names = tuple(child.name for child in node.children)
+            self.osc_server.send(
+                "/live/browser/list_drum_kits", (path,) + names
+            )
+
+        def load_drum_kit(params: Tuple[Any]):
+            track_id = int(params[0])
+            path = str(params[1])
+            if not path:
+                self.logger.warning("load_drum_kit: empty path")
+                return
+
+            app = Live.Application.get_application()
+            node = _walk(app.browser.drums, path)
+            if node is None:
+                return
+            if not node.is_loadable:
+                self.logger.warning(
+                    "load_drum_kit: path %r is not loadable" % path
+                )
+                return
+
+            try:
+                track = self.song.tracks[track_id]
+            except IndexError:
+                self.logger.warning(
+                    "load_drum_kit: track %d does not exist" % track_id
+                )
+                return
+
+            self.song.view.selected_track = track
+            app.browser.load_item(node)
+
         self.osc_server.add_handler(
             "/live/browser/list_instrument_presets", list_instrument_presets
         )
         self.osc_server.add_handler(
             "/live/track/load_instrument_preset", load_instrument_preset
+        )
+        self.osc_server.add_handler(
+            "/live/browser/list_drum_kits", list_drum_kits
+        )
+        self.osc_server.add_handler(
+            "/live/track/load_drum_kit", load_drum_kit
         )
