@@ -333,6 +333,8 @@ Walk and load items from Live's instrument browser. Useful for selecting specifi
 |:-----------------------------------------|:-------------------|:-----------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | /live/browser/list_instrument_presets    | path (optional)    | path, [child_name, ...]      | List child names under `app.browser.instruments` at the given slash-separated path. Empty path returns top-level instruments. Empty reply (just `path`) means the path doesn't exist.       |
 | /live/track/load_instrument_preset       | track_id, path     |                              | Load an item from the instrument browser onto the specified track. `path` is slash-separated from `app.browser.instruments` (e.g. `Wavetable/Synth Lead/Big Pluck`). No reply.              |
+| /live/browser/list_audio_effects         | path (optional)    | path, [child_name, ...]      | List child names under `app.browser.audio_effects` at the given slash-separated path. Same empty-reply convention as `list_instrument_presets`.                                              |
+| /live/track/load_audio_effect            | track_id, path     |                              | Load an audio effect from `app.browser.audio_effects` onto the specified track (appended to the device chain). No reply.                                                                    |
 
 </details>
 
