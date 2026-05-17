@@ -325,7 +325,7 @@ See [Device API](#device-api) for details on Device type/class_names.
 
 ## Browser API
 
-Walk and load items from Live's instrument browser. Useful for selecting specific presets rather than just loading the default device.
+Walk and load items from Live's instrument and drum browsers. Useful for selecting specific presets and drum kits rather than just loading the default device.
 
 <details>
 <summary><b>Documentation</b>: Browser API</summary>
@@ -334,6 +334,8 @@ Walk and load items from Live's instrument browser. Useful for selecting specifi
 |:-----------------------------------------|:-------------------|:-----------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | /live/browser/list_instrument_presets    | path (optional)    | path, [child_name, ...]      | List child names under `app.browser.instruments` at the given slash-separated path. Empty path returns top-level instruments. Empty reply (just `path`) means the path doesn't exist.       |
 | /live/track/load_instrument_preset       | track_id, path     |                              | Load an item from the instrument browser onto the specified track. `path` is slash-separated from `app.browser.instruments` (e.g. `Wavetable/Synth Lead/Big Pluck`). No reply.              |
+| /live/browser/list_drum_kits             | path (optional)    | path, [child_name, ...]      | List child names under `app.browser.drums` at the given slash-separated path. Empty path returns top-level drum categories. Same empty-reply convention as `list_instrument_presets`.       |
+| /live/track/load_drum_kit                | track_id, path     |                              | Load a drum kit from `app.browser.drums` onto the specified track. `path` is slash-separated (e.g. `Kit-Core 909/909 Kit`). No reply.                                                       |
 
 </details>
 
