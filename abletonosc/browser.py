@@ -10,6 +10,7 @@ class BrowserHandler(AbletonOSCHandler):
 
     Exposes instruments (`app.browser.instruments`), drums
     (`app.browser.drums`), and audio effects (`app.browser.audio_effects`).
+    Audio effects can be loaded onto either regular tracks or return tracks.
     MIDI effects and other sections could follow the same pattern.
     """
 
@@ -165,6 +166,35 @@ class BrowserHandler(AbletonOSCHandler):
             self.song.view.selected_track = track
             app.browser.load_item(node)
 
+        def load_audio_effect_on_return(params: Tuple[Any]):
+            return_id = int(params[0])
+            path = str(params[1])
+            if not path:
+                self.logger.warning("load_audio_effect_on_return: empty path")
+                return
+
+            app = Live.Application.get_application()
+            node = _walk(app.browser.audio_effects, path)
+            if node is None:
+                return
+            if not node.is_loadable:
+                self.logger.warning(
+                    "load_audio_effect_on_return: path %r is not loadable" % path
+                )
+                return
+
+            try:
+                return_track = self.song.return_tracks[return_id]
+            except IndexError:
+                self.logger.warning(
+                    "load_audio_effect_on_return: return track %d does not exist"
+                    % return_id
+                )
+                return
+
+            self.song.view.selected_track = return_track
+            app.browser.load_item(node)
+
         self.osc_server.add_handler(
             "/live/browser/list_instrument_presets", list_instrument_presets
         )
@@ -182,4 +212,7 @@ class BrowserHandler(AbletonOSCHandler):
         )
         self.osc_server.add_handler(
             "/live/track/load_audio_effect", load_audio_effect
+        )
+        self.osc_server.add_handler(
+            "/live/return_track/load_audio_effect", load_audio_effect_on_return
         )
