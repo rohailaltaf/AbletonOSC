@@ -515,6 +515,12 @@ Represents an instrument or effect.
 | /live/device/get/parameter/value         | track_id, device_id, parameter_id        | track_id, device_id, parameter_id, value | Get a device parameter value                                                            |
 | /live/device/get/parameter/value_string  | track_id, device_id, parameter_id        | track_id, device_id, parameter_id, value | Get the device parameter value as a readable string ex: 2500 Hz                         |
 | /live/device/set/parameter/value         | track_id, device_id, parameter_id, value |                                          | Set a device parameter value                                                            |
+| /live/device/get/available_input_routing_types    | track_id, device_id          | track_id, device_id, [name, ...]         | List input routing source names (track names + "No Input" + external inputs). Empty list = device does not support input routing.            |
+| /live/device/get/available_input_routing_channels | track_id, device_id          | track_id, device_id, [name, ...]         | List input routing channel tap points (e.g. "Pre FX", "Post FX", "Post Mixer"). Empty list = unsupported.                                     |
+| /live/device/get/input_routing_type               | track_id, device_id          | track_id, device_id, name                | Current input routing source display name (empty string if device doesn't support input routing).                                              |
+| /live/device/get/input_routing_channel            | track_id, device_id          | track_id, device_id, name                | Current input routing channel display name.                                                                                                    |
+| /live/device/set/input_routing_type               | track_id, device_id, name    |                                          | Set sidechain / external input source by display name. Used to wire a Compressor's sidechain to a kick track, etc.                            |
+| /live/device/set/input_routing_channel            | track_id, device_id, name    |                                          | Set sidechain / external input channel tap point.                                                                                              |
 
 For devices:
 

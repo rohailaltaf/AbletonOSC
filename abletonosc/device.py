@@ -140,3 +140,93 @@ class DeviceHandler(AbletonOSCHandler):
         self.osc_server.add_handler("/live/device/get/parameter/name", create_device_callback(device_get_parameter_name))
         self.osc_server.add_handler("/live/device/start_listen/parameter/value", create_device_callback(device_get_parameter_value_listener, include_ids = True))
         self.osc_server.add_handler("/live/device/stop_listen/parameter/value", create_device_callback(device_get_parameter_remove_value_listener, include_ids = True))
+
+        #--------------------------------------------------------------------------------
+        # Device: input routing (sidechain source for Compressor / Gate / Vocoder / etc.)
+        #
+        # Not all devices support input routing — only those that can receive a
+        # sidechain or external input signal. For devices that don't, the getters
+        # return an empty tuple and the setter logs a warning.
+        #
+        # The available routing types are track names (e.g. "Kick", "Drums"), plus
+        # "No Input" and any external inputs configured in Live's preferences.
+        # The routing channel is the tap point: "Pre FX" / "Post FX" / "Post Mixer".
+        #--------------------------------------------------------------------------------
+        def device_get_available_input_routing_types(device, params: Tuple[Any] = ()):
+            try:
+                return tuple(rt.display_name for rt in device.available_input_routing_types)
+            except AttributeError:
+                return ()
+
+        def device_get_available_input_routing_channels(device, params: Tuple[Any] = ()):
+            try:
+                return tuple(rc.display_name for rc in device.available_input_routing_channels)
+            except AttributeError:
+                return ()
+
+        def device_get_input_routing_type(device, params: Tuple[Any] = ()):
+            try:
+                return (device.input_routing_type.display_name,)
+            except AttributeError:
+                return ("",)
+
+        def device_get_input_routing_channel(device, params: Tuple[Any] = ()):
+            try:
+                return (device.input_routing_channel.display_name,)
+            except AttributeError:
+                return ("",)
+
+        def device_set_input_routing_type(device, params: Tuple[Any] = ()):
+            type_name = str(params[0])
+            try:
+                for rt in device.available_input_routing_types:
+                    if rt.display_name == type_name:
+                        device.input_routing_type = rt
+                        return
+                self.logger.warning(
+                    "device set_input_routing_type: no routing type named %r" % type_name
+                )
+            except AttributeError:
+                self.logger.warning(
+                    "device set_input_routing_type: device does not support input routing"
+                )
+
+        def device_set_input_routing_channel(device, params: Tuple[Any] = ()):
+            channel_name = str(params[0])
+            try:
+                for rc in device.available_input_routing_channels:
+                    if rc.display_name == channel_name:
+                        device.input_routing_channel = rc
+                        return
+                self.logger.warning(
+                    "device set_input_routing_channel: no channel named %r" % channel_name
+                )
+            except AttributeError:
+                self.logger.warning(
+                    "device set_input_routing_channel: device does not support input routing"
+                )
+
+        self.osc_server.add_handler(
+            "/live/device/get/available_input_routing_types",
+            create_device_callback(device_get_available_input_routing_types),
+        )
+        self.osc_server.add_handler(
+            "/live/device/get/available_input_routing_channels",
+            create_device_callback(device_get_available_input_routing_channels),
+        )
+        self.osc_server.add_handler(
+            "/live/device/get/input_routing_type",
+            create_device_callback(device_get_input_routing_type),
+        )
+        self.osc_server.add_handler(
+            "/live/device/get/input_routing_channel",
+            create_device_callback(device_get_input_routing_channel),
+        )
+        self.osc_server.add_handler(
+            "/live/device/set/input_routing_type",
+            create_device_callback(device_set_input_routing_type),
+        )
+        self.osc_server.add_handler(
+            "/live/device/set/input_routing_channel",
+            create_device_callback(device_set_input_routing_channel),
+        )
