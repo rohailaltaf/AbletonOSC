@@ -92,9 +92,31 @@ class BrowserHandler(AbletonOSCHandler):
             if node is None:
                 self.osc_server.send("/live/browser/list_samples", (path,))
                 return
-            names = tuple(child.name for child in node.children)
+
+            # Samples library can have hundreds of entries per folder (entire
+            # Packs at the top level). Cap the reply by accumulated byte size
+            # to stay under typical OSC/UDP MTU (~9 KB on macOS). Callers
+            # should drill into subfolders if the result is truncated.
+            MAX_REPLY_BYTES = 7500
+            names = []
+            running = len(path.encode("utf-8")) + 32  # rough OSC overhead
+            truncated = False
+            for child in node.children:
+                name = child.name
+                nb = len(name.encode("utf-8")) + 8  # string + OSC alignment
+                if running + nb > MAX_REPLY_BYTES:
+                    truncated = True
+                    break
+                names.append(name)
+                running += nb
+            if truncated:
+                self.logger.warning(
+                    "list_samples: truncating reply at %d/%d children "
+                    "under %r (would exceed UDP MTU)"
+                    % (len(names), len(list(node.children)), path)
+                )
             self.osc_server.send(
-                "/live/browser/list_samples", (path,) + names
+                "/live/browser/list_samples", (path,) + tuple(names)
             )
 
         def load_sample(params: Tuple[Any]):
