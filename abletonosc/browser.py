@@ -9,9 +9,10 @@ class BrowserHandler(AbletonOSCHandler):
     """OSC handlers for walking and loading from Live's browser.
 
     Exposes instruments (`app.browser.instruments`), drums
-    (`app.browser.drums`), and audio effects (`app.browser.audio_effects`).
-    Audio effects can be loaded onto either regular tracks or return tracks.
-    MIDI effects and other sections could follow the same pattern.
+    (`app.browser.drums`), audio effects (`app.browser.audio_effects`),
+    and samples (`app.browser.samples`). Audio effects can be loaded onto
+    either regular tracks or return tracks. Samples are wrapped in Simpler
+    automatically when loaded onto a MIDI track.
     """
 
     def __init__(self, manager):
@@ -195,6 +196,47 @@ class BrowserHandler(AbletonOSCHandler):
             self.song.view.selected_track = return_track
             app.browser.load_item(node)
 
+        def list_samples(params: Tuple[Any]):
+            path = str(params[0]) if params else ""
+            app = Live.Application.get_application()
+            node = _walk(app.browser.samples, path) if path else app.browser.samples
+            if node is None:
+                self.osc_server.send("/live/browser/list_samples", (path,))
+                return
+            names = tuple(child.name for child in node.children)
+            self.osc_server.send(
+                "/live/browser/list_samples", (path,) + names
+            )
+
+        def load_sample(params: Tuple[Any]):
+            track_id = int(params[0])
+            path = str(params[1])
+            if not path:
+                self.logger.warning("load_sample: empty path")
+                return
+
+            app = Live.Application.get_application()
+            node = _walk(app.browser.samples, path)
+            if node is None:
+                return
+            if not node.is_loadable:
+                self.logger.warning(
+                    "load_sample: path %r is not loadable" % path
+                )
+                return
+
+            try:
+                track = self.song.tracks[track_id]
+            except IndexError:
+                self.logger.warning(
+                    "load_sample: track %d does not exist" % track_id
+                )
+                return
+
+            # Loading a sample onto a track wraps it in a Simpler automatically.
+            self.song.view.selected_track = track
+            app.browser.load_item(node)
+
         self.osc_server.add_handler(
             "/live/browser/list_instrument_presets", list_instrument_presets
         )
@@ -215,4 +257,10 @@ class BrowserHandler(AbletonOSCHandler):
         )
         self.osc_server.add_handler(
             "/live/return_track/load_audio_effect", load_audio_effect_on_return
+        )
+        self.osc_server.add_handler(
+            "/live/browser/list_samples", list_samples
+        )
+        self.osc_server.add_handler(
+            "/live/track/load_sample", load_sample
         )

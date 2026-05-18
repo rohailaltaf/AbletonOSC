@@ -341,6 +341,8 @@ Walk and load items from Live's instrument and drum browsers. Useful for selecti
 | /live/browser/list_audio_effects         | path (optional)    | path, [child_name, ...]      | List child names under `app.browser.audio_effects` at the given slash-separated path. Same empty-reply convention as `list_instrument_presets`.                                              |
 | /live/track/load_audio_effect            | track_id, path     |                              | Load an audio effect from `app.browser.audio_effects` onto the specified track (appended to the device chain). No reply.                                                                    |
 | /live/return_track/load_audio_effect     | return_id, path    |                              | Load an item from `app.browser.audio_effects` onto a return track by index. Mirrors `/live/track/load_audio_effect` but targets `song.return_tracks`. No reply.                              |
+| /live/browser/list_samples               | path (optional)    | path, [child_name, ...]      | List child names under `app.browser.samples` at the given slash-separated path. Same empty-reply convention as `list_instrument_presets`.                                                   |
+| /live/track/load_sample                  | track_id, path     |                              | Load a sample from `app.browser.samples` onto the specified track. Live wraps it in a Simpler automatically. No reply.                                                                       |
 
 </details>
 
