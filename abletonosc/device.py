@@ -140,3 +140,32 @@ class DeviceHandler(AbletonOSCHandler):
         self.osc_server.add_handler("/live/device/get/parameter/name", create_device_callback(device_get_parameter_name))
         self.osc_server.add_handler("/live/device/start_listen/parameter/value", create_device_callback(device_get_parameter_value_listener, include_ids = True))
         self.osc_server.add_handler("/live/device/stop_listen/parameter/value", create_device_callback(device_get_parameter_remove_value_listener, include_ids = True))
+
+        #--------------------------------------------------------------------------------
+        # Device: Drum Rack pad introspection
+        #
+        # A Drum Rack exposes `drum_pads`, a list of 128 pads indexed by MIDI note.
+        # A pad is considered populated when it has at least one chain (i.e. a
+        # sample/instrument has been dropped on it). For non-Drum-Rack devices the
+        # getters return an empty tuple.
+        #--------------------------------------------------------------------------------
+        def device_get_num_drum_pads(device, params: Tuple[Any] = ()):
+            if not hasattr(device, "drum_pads"):
+                return ()
+            return (sum(1 for pad in device.drum_pads if pad.chains),)
+
+        def device_get_drum_pads(device, params: Tuple[Any] = ()):
+            # Returns a flat (note, name) sequence for every populated pad,
+            # ordered by MIDI note. Empty pads are omitted to keep the reply
+            # small (well under the UDP MTU for typical kits).
+            if not hasattr(device, "drum_pads"):
+                return ()
+            result = []
+            for pad in device.drum_pads:
+                if pad.chains:
+                    result.append(pad.note)
+                    result.append(pad.name)
+            return tuple(result)
+
+        self.osc_server.add_handler("/live/device/get/num_drum_pads", create_device_callback(device_get_num_drum_pads))
+        self.osc_server.add_handler("/live/device/get/drum_pads", create_device_callback(device_get_drum_pads))
