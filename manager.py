@@ -100,6 +100,7 @@ class Manager(ControlSurface):
                 abletonosc.ViewHandler(self),
                 abletonosc.SceneHandler(self),
                 abletonosc.MidiMapHandler(self),
+                abletonosc.BrowserHandler(self),
             ]
 
     def clear_api(self):
@@ -121,6 +122,7 @@ class Manager(ControlSurface):
     def reload_imports(self):
         try:
             importlib.reload(abletonosc.application)
+            importlib.reload(abletonosc.browser)
             importlib.reload(abletonosc.clip)
             importlib.reload(abletonosc.clip_slot)
             importlib.reload(abletonosc.device)
