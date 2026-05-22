@@ -196,6 +196,48 @@ class BrowserHandler(AbletonOSCHandler):
             self.song.view.selected_track = return_track
             app.browser.load_item(node)
 
+        def list_midi_effects(params: Tuple[Any]):
+            path = str(params[0]) if params else ""
+            app = Live.Application.get_application()
+            node = _walk(app.browser.midi_effects, path) if path else app.browser.midi_effects
+            if node is None:
+                self.osc_server.send(
+                    "/live/browser/list_midi_effects", (path,)
+                )
+                return
+            names = tuple(child.name for child in node.children)
+            self.osc_server.send(
+                "/live/browser/list_midi_effects", (path,) + names
+            )
+
+        def load_midi_effect(params: Tuple[Any]):
+            track_id = int(params[0])
+            path = str(params[1])
+            if not path:
+                self.logger.warning("load_midi_effect: empty path")
+                return
+
+            app = Live.Application.get_application()
+            node = _walk(app.browser.midi_effects, path)
+            if node is None:
+                return
+            if not node.is_loadable:
+                self.logger.warning(
+                    "load_midi_effect: path %r is not loadable" % path
+                )
+                return
+
+            try:
+                track = self.song.tracks[track_id]
+            except IndexError:
+                self.logger.warning(
+                    "load_midi_effect: track %d does not exist" % track_id
+                )
+                return
+
+            self.song.view.selected_track = track
+            app.browser.load_item(node)
+
         def list_samples(params: Tuple[Any]):
             # Params: (path) or (path, offset). Optional offset for pagination
             # when a folder has more children than fit in one OSC packet.
@@ -348,6 +390,12 @@ class BrowserHandler(AbletonOSCHandler):
         )
         self.osc_server.add_handler(
             "/live/return_track/load_audio_effect", load_audio_effect_on_return
+        )
+        self.osc_server.add_handler(
+            "/live/browser/list_midi_effects", list_midi_effects
+        )
+        self.osc_server.add_handler(
+            "/live/track/load_midi_effect", load_midi_effect
         )
         self.osc_server.add_handler(
             "/live/browser/list_samples", list_samples
