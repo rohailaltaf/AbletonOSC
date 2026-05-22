@@ -232,6 +232,15 @@ class ClipHandler(AbletonOSCHandler):
                 return None
             return slot.clip
 
+        def _get_or_create_envelope(clip, parameter):
+            """`clip.automation_envelope(parameter)` returns None when no
+            envelope exists for the parameter yet. `create_automation_envelope`
+            creates one. Try both so first-time writes Just Work."""
+            envelope = clip.automation_envelope(parameter)
+            if envelope is None and hasattr(clip, "create_automation_envelope"):
+                envelope = clip.create_automation_envelope(parameter)
+            return envelope
+
         def _apply_steps(envelope, steps_flat):
             # steps_flat is a flat sequence (time, length, value, ...)
             for i in range(0, len(steps_flat) - 2, 3):
@@ -239,6 +248,13 @@ class ClipHandler(AbletonOSCHandler):
                 length = float(steps_flat[i + 1])
                 value = float(steps_flat[i + 2])
                 envelope.insert_step(time, length, value)
+
+        def _re_enable(parameter):
+            """If Live marked the parameter as 'automation disabled' (orange
+            dot), nothing we write into the envelope takes effect until the
+            user clicks Re-Enable Automation in the UI or we call it here."""
+            if hasattr(parameter, "re_enable_automation"):
+                parameter.re_enable_automation()
 
         def clip_automate_device_parameter(params):
             track_id = int(params[0])
@@ -258,8 +274,16 @@ class ClipHandler(AbletonOSCHandler):
                     "(%d, %d) on track %d" % (device_id, param_idx, track_id)
                 )
                 return
-            envelope = clip.automation_envelope(parameter)
+            envelope = _get_or_create_envelope(clip, parameter)
+            if envelope is None:
+                self.logger.warning(
+                    "automate_device_parameter: could not get/create envelope "
+                    "for track %d device %d param %d"
+                    % (track_id, device_id, param_idx)
+                )
+                return
             _apply_steps(envelope, steps_flat)
+            _re_enable(parameter)
 
         def clip_automate_mixer_parameter(params):
             track_id = int(params[0])
@@ -290,8 +314,15 @@ class ClipHandler(AbletonOSCHandler):
                     "(expected volume / panning / send_N)" % param_name
                 )
                 return
-            envelope = clip.automation_envelope(parameter)
+            envelope = _get_or_create_envelope(clip, parameter)
+            if envelope is None:
+                self.logger.warning(
+                    "automate_mixer_parameter: could not get/create envelope "
+                    "for track %d %s" % (track_id, param_name)
+                )
+                return
             _apply_steps(envelope, steps_flat)
+            _re_enable(parameter)
 
         def clip_clear_envelopes(params):
             track_id = int(params[0])
