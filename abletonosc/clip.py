@@ -202,6 +202,118 @@ class ClipHandler(AbletonOSCHandler):
 
         self.osc_server.add_handler("/live/clips/unfilter", clips_unfilter_handler)
 
+        #--------------------------------------------------------------------------------
+        # Clip automation envelopes — write step-style automation per clip
+        # for any device parameter or mixer parameter. Live's
+        # Live.Automation.AutomationEnvelope public API only supports steps
+        # (no native breakpoints), so callers approximate ramps by writing
+        # many small adjacent steps.
+        #--------------------------------------------------------------------------------
+        def _clip_at(track_id, clip_id):
+            try:
+                track = self.song.tracks[track_id]
+            except IndexError:
+                self.logger.warning(
+                    "automation: track %d does not exist" % track_id
+                )
+                return None
+            try:
+                slot = track.clip_slots[clip_id]
+            except IndexError:
+                self.logger.warning(
+                    "automation: clip slot %d does not exist on track %d"
+                    % (clip_id, track_id)
+                )
+                return None
+            if slot.clip is None:
+                self.logger.warning(
+                    "automation: no clip in slot (%d, %d)" % (track_id, clip_id)
+                )
+                return None
+            return slot.clip
+
+        def _apply_steps(envelope, steps_flat):
+            # steps_flat is a flat sequence (time, length, value, ...)
+            for i in range(0, len(steps_flat) - 2, 3):
+                time = float(steps_flat[i])
+                length = float(steps_flat[i + 1])
+                value = float(steps_flat[i + 2])
+                envelope.insert_step(time, length, value)
+
+        def clip_automate_device_parameter(params):
+            track_id = int(params[0])
+            clip_id = int(params[1])
+            device_id = int(params[2])
+            param_idx = int(params[3])
+            steps_flat = params[4:]
+
+            clip = _clip_at(track_id, clip_id)
+            if clip is None:
+                return
+            try:
+                parameter = self.song.tracks[track_id].devices[device_id].parameters[param_idx]
+            except IndexError:
+                self.logger.warning(
+                    "automate_device_parameter: bad device/param indices "
+                    "(%d, %d) on track %d" % (device_id, param_idx, track_id)
+                )
+                return
+            envelope = clip.automation_envelope(parameter)
+            _apply_steps(envelope, steps_flat)
+
+        def clip_automate_mixer_parameter(params):
+            track_id = int(params[0])
+            clip_id = int(params[1])
+            param_name = str(params[2])
+            steps_flat = params[3:]
+
+            clip = _clip_at(track_id, clip_id)
+            if clip is None:
+                return
+            mixer = self.song.tracks[track_id].mixer_device
+            if param_name == "volume":
+                parameter = mixer.volume
+            elif param_name == "panning":
+                parameter = mixer.panning
+            elif param_name.startswith("send_"):
+                try:
+                    send_idx = int(param_name.split("_", 1)[1])
+                    parameter = mixer.sends[send_idx]
+                except (IndexError, ValueError):
+                    self.logger.warning(
+                        "automate_mixer_parameter: bad send index in %r" % param_name
+                    )
+                    return
+            else:
+                self.logger.warning(
+                    "automate_mixer_parameter: unknown name %r "
+                    "(expected volume / panning / send_N)" % param_name
+                )
+                return
+            envelope = clip.automation_envelope(parameter)
+            _apply_steps(envelope, steps_flat)
+
+        def clip_clear_envelopes(params):
+            track_id = int(params[0])
+            clip_id = int(params[1])
+            clip = _clip_at(track_id, clip_id)
+            if clip is None:
+                return
+            clip.clear_all_envelopes()
+
+        self.osc_server.add_handler(
+            "/live/clip/automate_device_parameter",
+            clip_automate_device_parameter,
+        )
+        self.osc_server.add_handler(
+            "/live/clip/automate_mixer_parameter",
+            clip_automate_mixer_parameter,
+        )
+        self.osc_server.add_handler(
+            "/live/clip/clear_envelopes",
+            clip_clear_envelopes,
+        )
+
     def _build_clip_name_cache(self):
         regex = "([_-])([A-G][A-G#b1-9-]*)$"
         for track_index, track in enumerate(self.song.tracks):
