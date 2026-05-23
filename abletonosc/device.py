@@ -239,19 +239,28 @@ class DeviceHandler(AbletonOSCHandler):
         # sample/instrument has been dropped on it). For non-Drum-Rack devices the
         # getters return an empty tuple.
         #--------------------------------------------------------------------------------
+        # NOTE: accessing `.drum_pads` on a non-Drum-Rack device raises
+        # RuntimeError ("Only drum racks can have pads!"), which hasattr() does
+        # NOT suppress (it only swallows AttributeError). Many pack "kits" are
+        # actually Instrument Racks (InstrumentGroupDevice), so guard the access
+        # with try/except and return empty for anything that isn't a Drum Rack.
         def device_get_num_drum_pads(device, params: Tuple[Any] = ()):
-            if not hasattr(device, "drum_pads"):
+            try:
+                pads = device.drum_pads
+            except (RuntimeError, AttributeError):
                 return ()
-            return (sum(1 for pad in device.drum_pads if pad.chains),)
+            return (sum(1 for pad in pads if pad.chains),)
 
         def device_get_drum_pads(device, params: Tuple[Any] = ()):
             # Returns a flat (note, name) sequence for every populated pad,
             # ordered by MIDI note. Empty pads are omitted to keep the reply
             # small (well under the UDP MTU for typical kits).
-            if not hasattr(device, "drum_pads"):
+            try:
+                pads = device.drum_pads
+            except (RuntimeError, AttributeError):
                 return ()
             result = []
-            for pad in device.drum_pads:
+            for pad in pads:
                 if pad.chains:
                     result.append(pad.note)
                     result.append(pad.name)
