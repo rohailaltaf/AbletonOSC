@@ -129,6 +129,21 @@ class ClipHandler(AbletonOSCHandler):
             self.osc_server.add_handler("/live/clip/set/%s" % prop,
                                         create_clip_callback(self._set_property, prop))
 
+        #--------------------------------------------------------------------------------
+        # Clip: quantize timing to a grid.
+        # `Clip.quantize(grid, amount)` snaps note starts toward `grid` by `amount`
+        # (0.0 = no change, 1.0 = full snap). `grid` is a Live.Song.Quantization
+        # enum int (e.g. 7 = 1/4, 9 = 1/8, 11 = 1/16). Amount < 1.0 keeps some of
+        # the original feel / swing.
+        #--------------------------------------------------------------------------------
+        def clip_quantize(clip, params: Tuple[Any]):
+            grid = int(params[0])
+            amount = float(params[1])
+            clip.quantize(grid, amount)
+
+        self.osc_server.add_handler("/live/clip/quantize",
+                                    create_clip_callback(clip_quantize))
+
         def clip_get_notes(clip, params: Tuple[Any] = ()):
             if len(params) == 4:
                 pitch_start, pitch_span, time_start, time_span = params
