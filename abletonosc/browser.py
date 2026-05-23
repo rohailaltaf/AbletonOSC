@@ -373,15 +373,17 @@ class BrowserHandler(AbletonOSCHandler):
                 )
                 return
 
-            if not hasattr(device, "drum_pads"):
+            # Accessing .drum_pads on a non-Drum-Rack raises RuntimeError (not
+            # AttributeError), which hasattr does NOT suppress — so guard the
+            # access itself with try/except rather than a hasattr precheck.
+            try:
+                pad = device.drum_pads[pad_pitch]
+            except (RuntimeError, AttributeError):
                 self.logger.warning(
                     "load_sample_to_drum_pad: device %d on track %d is not a Drum Rack"
                     % (device_id, track_id)
                 )
                 return
-
-            try:
-                pad = device.drum_pads[pad_pitch]
             except (IndexError, KeyError):
                 self.logger.warning(
                     "load_sample_to_drum_pad: no drum pad at MIDI pitch %d"
@@ -424,3 +426,59 @@ class BrowserHandler(AbletonOSCHandler):
         self.osc_server.add_handler(
             "/live/track/load_sample_to_drum_pad", load_sample_to_drum_pad
         )
+
+        #--------------------------------------------------------------------------------
+        # Generic browser-node listing — exposes the remaining
+        # Application.Browser nodes (packs, plugins, user_library, sounds,
+        # clips, max_for_live, current_project, ...) with the same byte-cap +
+        # pagination as list_samples. Reply: (path, offset, total, *names).
+        # A node attribute that doesn't exist on this Live version raises
+        # AttributeError/RuntimeError — caught, logged, and reported as empty so
+        # callers degrade gracefully.
+        #--------------------------------------------------------------------------------
+        def _make_browser_node_lister(address, attr_name):
+            def handler(params: Tuple[Any]):
+                path = str(params[0]) if len(params) >= 1 else ""
+                offset = int(params[1]) if len(params) >= 2 else 0
+                app = Live.Application.get_application()
+                try:
+                    root = getattr(app.browser, attr_name)
+                except (AttributeError, RuntimeError):
+                    self.logger.warning(
+                        "browser node %r not available on this Live version"
+                        % attr_name
+                    )
+                    self.osc_server.send(address, (path, offset, 0))
+                    return
+                node = _walk(root, path) if path else root
+                if node is None:
+                    self.osc_server.send(address, (path, offset, 0))
+                    return
+                all_children = list(node.children)
+                total = len(all_children)
+                MAX_REPLY_BYTES = 7500
+                names = []
+                running = len(path.encode("utf-8")) + 64
+                for child in all_children[offset:]:
+                    nm = child.name
+                    nb = len(nm.encode("utf-8")) + 8
+                    if running + nb > MAX_REPLY_BYTES:
+                        break
+                    names.append(nm)
+                    running += nb
+                self.osc_server.send(address, (path, offset, total) + tuple(names))
+            self.osc_server.add_handler(address, handler)
+
+        # grooves and templates are NOT exposed as Application.Browser nodes in
+        # Live 12 (verified by probe) — grooves live in song.groove_pool, and
+        # there's no browsable templates node — so they're omitted here.
+        for _addr, _attr in [
+            ("/live/browser/list_packs", "packs"),
+            ("/live/browser/list_plugins", "plugins"),
+            ("/live/browser/list_user_library", "user_library"),
+            ("/live/browser/list_sounds", "sounds"),
+            ("/live/browser/list_clips", "clips"),
+            ("/live/browser/list_max_for_live", "max_for_live"),
+            ("/live/browser/list_current_project", "current_project"),
+        ]:
+            _make_browser_node_lister(_addr, _attr)
