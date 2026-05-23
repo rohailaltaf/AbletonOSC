@@ -269,6 +269,29 @@ class TrackHandler(AbletonOSCHandler):
         self.osc_server.add_handler("/live/track/get/input_routing_channel", create_track_callback(track_get_input_routing_channel))
         self.osc_server.add_handler("/live/track/set/input_routing_channel", create_track_callback(track_set_input_routing_channel))
 
+        #--------------------------------------------------------------------------------
+        # Track: Arrangement-view clip placement
+        #
+        # Copies a Session clip onto this track's Arrangement timeline at a given
+        # beat position via Live's `Track.duplicate_clip_to_arrangement`. This is
+        # the only LOM path to build an Arrangement programmatically (you cannot
+        # create arrangement clips from raw notes). The source is a Session clip
+        # slot on the same track; `arrangement_time` is in beats from bar 1.
+        #--------------------------------------------------------------------------------
+        def track_duplicate_clip_to_arrangement(track, params):
+            source_clip_index = int(params[0])
+            arrangement_time = float(params[1])
+            clip = track.clip_slots[source_clip_index].clip
+            if clip is None:
+                self.logger.warning(
+                    "duplicate_clip_to_arrangement: no clip in slot %d" % source_clip_index
+                )
+                return
+            track.duplicate_clip_to_arrangement(clip, arrangement_time)
+
+        self.osc_server.add_handler("/live/track/duplicate_clip_to_arrangement",
+                                    create_track_callback(track_duplicate_clip_to_arrangement))
+
     def _set_mixer_property(self, target, prop, params: Tuple) -> None:
         parameter_object = getattr(target.mixer_device, prop)
         self.logger.info("Setting property for %s: %s (new value %s)" % (self.class_identifier, prop, params[0]))
