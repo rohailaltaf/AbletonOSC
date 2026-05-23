@@ -86,15 +86,33 @@ class BrowserHandler(AbletonOSCHandler):
             app.browser.load_item(node)
 
         def list_drum_kits(params: Tuple[Any]):
-            path = str(params[0]) if params else ""
+            # Params: (path) or (path, offset). Offset paginates when a folder
+            # has more kits than fit in one OSC packet — big packs like Drum
+            # Machines have hundreds of kits, which overflow the UDP MTU and get
+            # dropped (manifesting as intermittent query timeouts). Same
+            # byte-cap + pagination as list_samples.
+            # Reply shape: (path, offset, total_count, name1, name2, ...).
+            path = str(params[0]) if len(params) >= 1 else ""
+            offset = int(params[1]) if len(params) >= 2 else 0
             app = Live.Application.get_application()
             node = _walk(app.browser.drums, path) if path else app.browser.drums
             if node is None:
-                self.osc_server.send("/live/browser/list_drum_kits", (path,))
+                self.osc_server.send("/live/browser/list_drum_kits", (path, offset, 0))
                 return
-            names = tuple(child.name for child in node.children)
+            all_children = list(node.children)
+            total = len(all_children)
+            MAX_REPLY_BYTES = 7500
+            names = []
+            running = len(path.encode("utf-8")) + 64
+            for child in all_children[offset:]:
+                name = child.name
+                nb = len(name.encode("utf-8")) + 8
+                if running + nb > MAX_REPLY_BYTES:
+                    break
+                names.append(name)
+                running += nb
             self.osc_server.send(
-                "/live/browser/list_drum_kits", (path,) + names
+                "/live/browser/list_drum_kits", (path, offset, total) + tuple(names)
             )
 
         def load_drum_kit(params: Tuple[Any]):
