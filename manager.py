@@ -101,6 +101,7 @@ class Manager(ControlSurface):
                 abletonosc.SceneHandler(self),
                 abletonosc.MidiMapHandler(self),
                 abletonosc.BrowserHandler(self),
+                abletonosc.MasterTrackHandler(self),
             ]
 
     def clear_api(self):
@@ -127,6 +128,7 @@ class Manager(ControlSurface):
             importlib.reload(abletonosc.clip_slot)
             importlib.reload(abletonosc.device)
             importlib.reload(abletonosc.handler)
+            importlib.reload(abletonosc.master_track)
             importlib.reload(abletonosc.osc_server)
             importlib.reload(abletonosc.scene)
             importlib.reload(abletonosc.song)
