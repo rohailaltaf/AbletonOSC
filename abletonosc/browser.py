@@ -164,6 +164,59 @@ class BrowserHandler(AbletonOSCHandler):
             self.song.view.selected_track = track
             app.browser.load_item(node)
 
+        def load_browser_clip(params: Tuple[Any]):
+            """Load a clip (e.g. an .alc Live Clip — MIDI or audio) from
+            app.browser.clips into a specific Session clip slot.
+
+            Params: (track_id, clip_slot_id, path).
+
+            This is the only way to land a real audio clip on the Session
+            grid programmatically — Live's Clip API can't create an audio
+            clip from a file path, so audio loops have to come through the
+            browser. Existing slot contents are replaced (Live's standard
+            browser-drop behaviour).
+            """
+            track_id = int(params[0])
+            clip_slot_id = int(params[1])
+            path = str(params[2])
+            if not path:
+                self.logger.warning("load_browser_clip: empty path")
+                return
+
+            app = Live.Application.get_application()
+            node = _walk(app.browser.clips, path)
+            if node is None:
+                return
+            if not node.is_loadable:
+                self.logger.warning(
+                    "load_browser_clip: path %r is not loadable" % path
+                )
+                return
+
+            try:
+                track = self.song.tracks[track_id]
+            except IndexError:
+                self.logger.warning(
+                    "load_browser_clip: track %d does not exist" % track_id
+                )
+                return
+
+            try:
+                clip_slot = track.clip_slots[clip_slot_id]
+            except IndexError:
+                self.logger.warning(
+                    "load_browser_clip: clip slot %d does not exist on track %d"
+                    % (clip_slot_id, track_id)
+                )
+                return
+
+            # Browser clips land in the highlighted clip slot. Setting both
+            # selected_track and highlighted_clip_slot mirrors what a UI
+            # drag-drop does.
+            self.song.view.selected_track = track
+            self.song.view.highlighted_clip_slot = clip_slot
+            app.browser.load_item(node)
+
         def list_drum_kits(params: Tuple[Any]):
             # Params: (path) or (path, offset). Offset paginates when a folder
             # has more kits than fit in one OSC packet — big packs like Drum
@@ -415,6 +468,9 @@ class BrowserHandler(AbletonOSCHandler):
         )
         self.osc_server.add_handler(
             "/live/track/load_browser_item", load_browser_item
+        )
+        self.osc_server.add_handler(
+            "/live/track/load_browser_clip", load_browser_clip
         )
         def load_sample_to_drum_pad(params: Tuple[Any]):
             """Load a sample into a specific Drum Rack pad on a track.
